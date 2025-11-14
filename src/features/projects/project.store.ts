@@ -33,6 +33,22 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         set({ projects: updated });
     },
+    updateTask: (projectId, taskId, title, dueDate, status) => {
+        const updatedProjects = get().projects.map((p) =>
+            p.id === projectId
+                ? {
+                    ...p,
+                    tasks: p.tasks.map((t) =>
+                        t.id === taskId
+                            ? { ...t, title, dueDate, status }
+                            : t
+                    ),
+                }
+                : p
+        );
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProjects));
+        set({ projects: updatedProjects });
+    },
 
     addTask: (projectId, title, dueDate, status) => {
         const updatedProjects = get().projects.map((p) =>

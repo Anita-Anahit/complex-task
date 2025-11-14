@@ -23,8 +23,8 @@ export const Layout = ({ children }: LayoutProps) => {
                 <Toolbar>
                     <Typography variant="h6">TaskForge</Typography>
                     <Switch checked={mode === "dark"} onChange={toggleTheme} />
-                    <Button id="root-logout-button" onClick={logout}>
-                        Logout
+                    <Button id="root-logout-button" color={"inherit"} onClick={logout}>
+                    Logout
                     </Button>
                 </Toolbar>
             </AppBar>

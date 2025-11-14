@@ -34,21 +34,27 @@ const schema = yup.object({
 
 const ProjectPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { projects, addTask } = useProjectStore();
+    const { projects, addTask, updateTask } = useProjectStore();
     const project = projects.find((p) => p.id === id);
 
     const [filter, setFilter] = useState("all");
     const [sort, setSort] = useState("none");
     const [open, setOpen] = useState(false);
+    const [editTaskId, setEditTaskId] = useState<string | null>(null); // track editing
 
     const { control, handleSubmit, reset } = useForm<TaskInputs>({
         resolver: yupResolver(schema),
     });
 
     const onSubmit = (data: TaskInputs) => {
-        if (id) addTask(id, data.title, data.dueDate, data.status);
+        if (id && !editTaskId) {
+            addTask(id, data.title, data.dueDate, data.status);
+        } else if (id && editTaskId) {
+            updateTask(id, editTaskId, data.title, data.dueDate, data.status);
+        }
         reset();
         setOpen(false);
+        setEditTaskId(null);
     };
 
     const filteredTasks = useMemo(() => {
@@ -60,6 +66,19 @@ const ProjectPage: React.FC = () => {
     }, [project, filter, sort]);
 
     if (!project) return <Typography p={4}>Project not found.</Typography>;
+
+    const handleEdit = (task: any) => {
+        setEditTaskId(task.id);
+
+        // preload form values
+        reset({
+            title: task.title,
+            dueDate: task.dueDate,
+            status: task.status,
+        });
+
+        setOpen(true);
+    };
 
     return (
         <Box p={4}>
@@ -99,14 +118,14 @@ const ProjectPage: React.FC = () => {
                         title={t.title}
                         dueDate={t.dueDate}
                         status={t.status}
-                        onEdit={() => alert("Edit feature not implemented yet")}
+                        onEdit={() => handleEdit(t)}
                     />
                 ))
             )}
 
-            {/* Add Task Modal */}
-            <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>New Task</DialogTitle>
+            {/* Add/Edit Task Modal */}
+            <Dialog open={open} onClose={() => { setOpen(false); setEditTaskId(null); }}>
+                <DialogTitle>{editTaskId ? "Edit Task" : "New Task"}</DialogTitle>
                 <DialogContent>
                     <form id="task-form" onSubmit={handleSubmit(onSubmit)}>
                         <Controller
@@ -156,9 +175,9 @@ const ProjectPage: React.FC = () => {
                     </form>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button onClick={() => { setOpen(false); setEditTaskId(null); }}>Cancel</Button>
                     <Button form="task-form" type="submit" variant="contained">
-                        Add Task
+                        {editTaskId ? "Save Changes" : "Add Task"}
                     </Button>
                 </DialogActions>
             </Dialog>

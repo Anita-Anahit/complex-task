@@ -21,6 +21,13 @@ export interface ProjectStore {
         dueDate: string,
         status: "todo" | "in-progress" | "done"
     ) => void;
+    updateTask: (
+        projectId: string,
+        taskId: string,
+        title: string,
+        dueDate: string,
+        status: "todo" | "in-progress" | "done"
+    ) => void;
     updateTaskStatus?: (
         projectId: string,
         taskId: string,
