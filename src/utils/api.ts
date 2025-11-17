@@ -1,12 +1,12 @@
 export const mockApi = {
-    getProjects: () =>
+    getProjects: (): Promise<any[]> =>
         new Promise((resolve) => {
             setTimeout(() => {
                 resolve(JSON.parse(localStorage.getItem("taskforge-projects") || "[]"));
             }, 500);
         }),
 
-    saveProjects: (projects: any) =>
+    saveProjects: (projects: any[]): Promise<boolean> =>
         new Promise((resolve) => {
             setTimeout(() => {
                 localStorage.setItem("taskforge-projects", JSON.stringify(projects));

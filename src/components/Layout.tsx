@@ -1,34 +1,24 @@
-import {type ReactNode, useEffect} from "react";
 import { AppBar, Toolbar, Typography, Switch, Button, Box } from "@mui/material";
+import styled from "@emotion/styled";
 import { useThemeContext } from "../contexts/ThemeContext";
-import {useAuthStore} from "../features/auth/auth.store.ts";
+import { useAuthStore } from "../features/auth/auth.store";
 
+const Root = styled(Box)` width: 100%; `;
 
-interface LayoutProps {
-    children: ReactNode;
-}
-
-export const Layout = ({ children }: LayoutProps) => {
+export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { mode, toggleTheme } = useThemeContext();
-    const { logout } = useAuthStore();
-
-    useEffect(() => {
-        const logoutButton = document.getElementById("log-out");
-        logoutButton?.click();
-    }, []);
+    const logout = useAuthStore((s) => s.logout);
 
     return (
-        <Box>
+        <Root>
             <AppBar position="static">
                 <Toolbar>
                     <Typography variant="h6">TaskForge</Typography>
                     <Switch checked={mode === "dark"} onChange={toggleTheme} />
-                    <Button id="root-logout-button" color={"inherit"} onClick={logout}>
-                    Logout
-                    </Button>
+                    <Button color="inherit" onClick={logout}>Logout</Button>
                 </Toolbar>
             </AppBar>
             <Box>{children}</Box>
-        </Box>
+        </Root>
     );
 };

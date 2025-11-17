@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
+import styled from "@emotion/styled";
 import {
-    Box,
-    Typography,
     Button,
     FormControl,
     InputLabel,
@@ -12,6 +11,8 @@ import {
     DialogContent,
     DialogActions,
     TextField,
+    Snackbar,
+    Alert,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -19,6 +20,36 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useProjectStore } from "./project.store";
 import { TaskListItem } from "../../components/TaskListItem";
+
+
+const PageWrapper = styled.div`
+    padding: 32px;
+`;
+
+const HeaderRow = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+`;
+
+const Title = styled.h1`
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+`;
+
+const FilterRow = styled.div`
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+`;
+
+const EmptyState = styled.p`
+    opacity: 0.6;
+    margin-top: 16px;
+`;
+
 
 interface TaskInputs {
     title: string;
@@ -32,67 +63,102 @@ const schema = yup.object({
     status: yup.string().required("Status is required"),
 });
 
+
 const ProjectPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { projects, addTask, updateTask } = useProjectStore();
+
+    const projects = useProjectStore((s) => s.projects);
+    const addTask = useProjectStore((s) => s.addTask);
+    const updateTask = useProjectStore((s) => s.updateTask);
+
     const project = projects.find((p) => p.id === id);
 
     const [filter, setFilter] = useState("all");
     const [sort, setSort] = useState("none");
     const [open, setOpen] = useState(false);
-    const [editTaskId, setEditTaskId] = useState<string | null>(null); // track editing
+    const [editTaskId, setEditTaskId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const { control, handleSubmit, reset } = useForm<TaskInputs>({
         resolver: yupResolver(schema),
     });
 
-    const onSubmit = (data: TaskInputs) => {
-        if (id && !editTaskId) {
-            addTask(id, data.title, data.dueDate, data.status);
-        } else if (id && editTaskId) {
-            updateTask(id, editTaskId, data.title, data.dueDate, data.status);
-        }
-        reset();
-        setOpen(false);
-        setEditTaskId(null);
-    };
+
+    const onSubmit = useCallback(
+        (data: TaskInputs) => {
+            try {
+                if (!id) return;
+                if (!editTaskId) {
+                    addTask(id, data.title, data.dueDate, data.status);
+                } else {
+                    updateTask(id, editTaskId, data.title, data.dueDate, data.status);
+                }
+
+                reset();
+                setOpen(false);
+                setEditTaskId(null);
+            } catch (e) {
+                console.error(e);
+                setError("Unable to save task. Please try again.");
+            }
+        },
+        [id, editTaskId, addTask, updateTask, reset]
+    );
+
 
     const filteredTasks = useMemo(() => {
         if (!project) return [];
+
         let tasks = [...project.tasks];
-        if (filter !== "all") tasks = tasks.filter((t) => t.status === filter);
-        if (sort === "date") tasks.sort((a, b) => +new Date(a.dueDate) - +new Date(b.dueDate));
+
+        if (filter !== "all") {
+            tasks = tasks.filter((t) => t.status === filter);
+        }
+
+        if (sort === "date") {
+            tasks.sort((a, b) => +new Date(a.dueDate) - +new Date(b.dueDate));
+        }
+
         return tasks;
     }, [project, filter, sort]);
 
-    if (!project) return <Typography p={4}>Project not found.</Typography>;
 
-    const handleEdit = (task: any) => {
-        setEditTaskId(task.id);
+    const handleEdit = useCallback(
+        (task: any) => {
+            setEditTaskId(task.id);
+            reset({
+                title: task.title,
+                dueDate: task.dueDate,
+                status: task.status,
+            });
+            setOpen(true);
+        },
+        [reset]
+    );
 
-        // preload form values
-        reset({
-            title: task.title,
-            dueDate: task.dueDate,
-            status: task.status,
-        });
+    if (!project)
+        return <PageWrapper><EmptyState>Project not found.</EmptyState></PageWrapper>;
 
-        setOpen(true);
-    };
+    // ------------------- RENDER -------------------
 
     return (
-        <Box p={4}>
-            <Box display="flex" justifyContent="space-between" mb={3}>
-                <Typography variant="h4">{project.title}</Typography>
+        <PageWrapper>
+
+            <HeaderRow>
+                <Title>{project.title}</Title>
                 <Button variant="contained" onClick={() => setOpen(true)}>
                     + New Task
                 </Button>
-            </Box>
+            </HeaderRow>
 
-            <Box display="flex" gap={2} mb={2}>
+            <FilterRow>
                 <FormControl size="small">
                     <InputLabel>Status</InputLabel>
-                    <Select value={filter} label="Status" onChange={(e) => setFilter(e.target.value)}>
+                    <Select
+                        value={filter}
+                        label="Status"
+                        onChange={(e) => setFilter(e.target.value)}
+                    >
                         <MenuItem value="all">All</MenuItem>
                         <MenuItem value="todo">To Do</MenuItem>
                         <MenuItem value="in-progress">In Progress</MenuItem>
@@ -102,15 +168,19 @@ const ProjectPage: React.FC = () => {
 
                 <FormControl size="small">
                     <InputLabel>Sort</InputLabel>
-                    <Select value={sort} label="Sort" onChange={(e) => setSort(e.target.value)}>
+                    <Select
+                        value={sort}
+                        label="Sort"
+                        onChange={(e) => setSort(e.target.value)}
+                    >
                         <MenuItem value="none">None</MenuItem>
                         <MenuItem value="date">By Due Date</MenuItem>
                     </Select>
                 </FormControl>
-            </Box>
+            </FilterRow>
 
             {filteredTasks.length === 0 ? (
-                <Typography color="text.secondary">No tasks available.</Typography>
+                <EmptyState>No tasks available.</EmptyState>
             ) : (
                 filteredTasks.map((t) => (
                     <TaskListItem
@@ -123,8 +193,13 @@ const ProjectPage: React.FC = () => {
                 ))
             )}
 
-            {/* Add/Edit Task Modal */}
-            <Dialog open={open} onClose={() => { setOpen(false); setEditTaskId(null); }}>
+            <Dialog
+                open={open}
+                onClose={() => {
+                    setOpen(false);
+                    setEditTaskId(null);
+                }}
+            >
                 <DialogTitle>{editTaskId ? "Edit Task" : "New Task"}</DialogTitle>
                 <DialogContent>
                     <form id="task-form" onSubmit={handleSubmit(onSubmit)}>
@@ -142,6 +217,7 @@ const ProjectPage: React.FC = () => {
                                 />
                             )}
                         />
+
                         <Controller
                             name="dueDate"
                             control={control}
@@ -149,15 +225,16 @@ const ProjectPage: React.FC = () => {
                                 <TextField
                                     {...field}
                                     type="date"
+                                    label="Due Date"
                                     fullWidth
                                     margin="dense"
-                                    label="Due Date"
                                     InputLabelProps={{ shrink: true }}
                                     error={!!fieldState.error}
                                     helperText={fieldState.error?.message}
                                 />
                             )}
                         />
+
                         <Controller
                             name="status"
                             control={control}
@@ -174,14 +251,33 @@ const ProjectPage: React.FC = () => {
                         />
                     </form>
                 </DialogContent>
+
                 <DialogActions>
-                    <Button onClick={() => { setOpen(false); setEditTaskId(null); }}>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            setOpen(false);
+                            setEditTaskId(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>
+
                     <Button form="task-form" type="submit" variant="contained">
                         {editTaskId ? "Save Changes" : "Add Task"}
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+
+            <Snackbar
+                open={!!error}
+                autoHideDuration={6000}
+                onClose={() => setError(null)}
+            >
+                <Alert severity="error" onClose={() => setError(null)}>
+                    {error}
+                </Alert>
+            </Snackbar>
+        </PageWrapper>
     );
 };
 
