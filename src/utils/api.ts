@@ -1,12 +1,14 @@
+import type {Project} from "../types/domain.ts";
+
 export const mockApi = {
-    getProjects: (): Promise<any[]> =>
+    getProjects: (): Promise<Project[]> =>
         new Promise((resolve) => {
             setTimeout(() => {
                 resolve(JSON.parse(localStorage.getItem("taskforge-projects") || "[]"));
             }, 500);
         }),
 
-    saveProjects: (projects: any[]): Promise<boolean> =>
+    saveProjects: (projects: Project[]): Promise<boolean> =>
         new Promise((resolve) => {
             setTimeout(() => {
                 localStorage.setItem("taskforge-projects", JSON.stringify(projects));
